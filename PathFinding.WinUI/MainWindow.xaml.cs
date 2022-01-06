@@ -240,28 +240,10 @@ public sealed partial class MainWindow : Window
 
                 var cellRect = new Rect(tile.X * TileSize + 1 - LeftX, tile.Y * TileSize + 1 - TopY, TileSize - 1, TileSize - 1);
                 ds.FillRectangle(cellRect, color);
-
-                if (tile.IsPartOfSolution)
-                {
-                    ds.FillEllipse(tile.X * TileSize + (TileSize / 2 - LeftX), tile.Y * TileSize + TileSize / 2 - TopY, BubbleSize, BubbleSize, Colors.White);
-                }
-
-                //TODO: Replace this switch with just looking up Players that have things that are populated. 
-                switch (tile.TileRole)
-                {
-                    case TileRole.Source:
-                        ds.FillEllipse(tile.X * TileSize + TileSize / 2 - LeftX, tile.Y * TileSize + TileSize / 2 - TopY, BubbleSize, BubbleSize, Colors.Green); continue;
-                    case TileRole.Destination:
-                        ds.FillEllipse(tile.X * TileSize + TileSize / 2 - LeftX, tile.Y * TileSize + TileSize / 2 - TopY, BubbleSize, BubbleSize, Colors.Black); continue;
-                    case TileRole.Nothing:
-                        break;
-                    case TileRole.Conveyor:
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
             }
         }
+
+        RenderSolutionCells(ds, minX, maxX, minY, maxY);
 
         using (var conveyorLayer = ds.CreateLayer(0.6f))
         {
@@ -309,6 +291,43 @@ public sealed partial class MainWindow : Window
         }
 
         float Unscale(float x) => x / (Vm.TileSize / 10f);
+    }
+
+    private void RenderSolutionCells(CanvasDrawingSession ds, int minX, int maxX, int minY, int maxY)
+    {
+        foreach (var (i, valueTuples) in Vm.SolutionDictionary)
+        {
+            for (var j = 0; j < valueTuples.Count; j++)
+            {
+                var (x, y) = valueTuples[j];
+
+                if (x < minX || x >= maxX || y < minY || y >= maxY) continue;
+
+                var tile = Vm.State.TileGrid[x, y];
+
+                Color color;
+                if (j == 0)
+                    color = Colors.Green;
+                else if (j == valueTuples.Count - 1)
+                    color = Colors.Black;
+                else
+                    color = _metroColors[i % _metroColors.Count];
+
+                ds.FillEllipse(tile.X * TileSize + (TileSize / 2 - LeftX), tile.Y * TileSize + TileSize / 2 - TopY, BubbleSize, BubbleSize, color);
+            }
+        }
+        
+        foreach (var (i, value) in Vm.PlayerDictionary)
+        {
+            if (value.Source is not null)
+            {
+                ds.FillEllipse(value.Source.X * TileSize + TileSize / 2 - LeftX, value.Source.Y * TileSize + TileSize / 2 - TopY, BubbleSize, BubbleSize, Colors.Green);
+            }
+            if (value.Destination is not null)
+            {
+                ds.FillEllipse(value.Destination.X * TileSize + TileSize / 2 - LeftX, value.Destination.Y * TileSize + TileSize / 2 - TopY, BubbleSize, BubbleSize, Colors.Black);
+            }
+        }
     }
 
     private void RenderCostTextOverlay(CanvasDrawingSession ds, Cell[,] cellCosts)
